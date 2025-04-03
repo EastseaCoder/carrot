@@ -66,20 +66,20 @@ function gameStart(count) {
   let isGameFinished = false;
   const gameTimer = timerStart();
   const clickHandler = (e) => {
-    if (isGameFinished) return;
+    if (isGameFinished || gameTimer.isTimerFinished()) return;
     const target = e.target;
     const carrotElement = target.closest('.game__item--carrot');
     const bugElement = target.closest('.game__item--bug');
 
     if (bugElement) {
-      gameResult('YOU LOSE', gameTimer);
+      gameResult('YOU LOSE', gameTimer.timer);
       isGameFinished = true;
     } else if (carrotElement) {
       count--;
       carrotElement.style.display = 'none';
       counter.innerText = count;
       if (count === 0) {
-        gameResult('YOU WON', gameTimer);
+        gameResult('YOU WON', gameTimer.timer);
         isGameFinished = true;
       }
     }
@@ -89,17 +89,19 @@ function gameStart(count) {
 }
 
 function timerStart() {
-  let sec = 2;
+  let sec = 10;
+  let isTimerFinished = false;
   timers.textContent = `0:${sec}`;
   const timer = setInterval(() => {
     sec--;
     if (sec < 0) {
       gameResult('YOU LOSE', timer);
+      isTimerFinished = true;
     } else {
       timers.textContent = `0:${sec}`;
     }
   }, 1000);
-  return timer;
+  return { timer, isTimerFinished: () => isTimerFinished };
 }
 
 function gameResult(text, timer) {
