@@ -114,4 +114,12 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: all 300ms linear;
+}
+
+.game__item img:hover {
+  transform: scale(1.5);
+}
+.game__item img:active {
+  transform: scale(1);
 }

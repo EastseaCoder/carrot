@@ -1,30 +1,56 @@
 'use strict';
-
-const playBtn = document.querySelector('.play__btn');
+const mainContainer = document.querySelector('.background__container');
 const itemsContainer = document.querySelector('.items__container');
-
 const counter = document.querySelector('.counter');
 const timers = document.querySelector('.timer');
-document.addEventListener('DOMContentLoaded', () => {
-  playBtn.addEventListener('click', () => {
-    playBtn.innerHTML = `<i class="fa-solid fa-stop"></i>`;
-    // setting carrot&bug
-    const createGameItem = createGameItems();
-    itemsContainer.innerHTML = createGameItem.content;
-    // init Count
-    let carrotCount = createGameItem.count;
-    counter.innerText = carrotCount;
-    // gameStart
-    gameStart(carrotCount);
-    // reset
+let currentTimer = null;
+let gameHandler = null;
+const btnState = {
+  isPlaying: false,
+  setIsPlaying(value) {
+    this.isPlaying = value;
+  },
+};
 
-    // carrot&bug randomSetting
-    const carrotItem = document.querySelectorAll('.game__item--carrot');
-    const bugItem = document.querySelectorAll('.game__item--bug');
-    setRandomPosition(carrotItem);
-    setRandomPosition(bugItem);
+document.addEventListener('DOMContentLoaded', () => {
+  mainContainer.addEventListener('click', (e) => {
+    const PlayBtn = e.target.closest('.play__btn');
+    const resetBtn = e.target.closest('.reset__btn');
+    if (PlayBtn) {
+      if (!btnState.isPlaying) {
+        PlayBtn.innerHTML = `<i class="fa-solid fa-stop"></i>`;
+        gameUpdate();
+        btnState.setIsPlaying(true);
+      } else {
+        PlayBtn.style.opacity = 0;
+        if (gameHandler) {
+          itemsContainer.removeEventListener('click', gameHandler);
+        }
+        gameResult('Retry?', currentTimer);
+      }
+    } else if (resetBtn) {
+      const mainBtn = document.querySelector('.main__btn');
+      mainBtn.style.opacity = 1;
+      gameUpdate();
+    }
   });
 });
+
+function gameUpdate() {
+  // setting carrot&bug
+  const createGameItem = createGameItems();
+  itemsContainer.innerHTML = createGameItem.content;
+  // init Count
+  let carrotCount = createGameItem.count;
+  counter.innerText = carrotCount;
+  // gameStart
+  gameStart(carrotCount);
+  // carrot&bug randomSetting
+  const carrotItem = document.querySelectorAll('.game__item--carrot');
+  const bugItem = document.querySelectorAll('.game__item--bug');
+  setRandomPosition(carrotItem);
+  setRandomPosition(bugItem);
+}
 
 function getRandom(max, min) {
   return Math.floor(Math.random() * (max - min));
@@ -62,9 +88,11 @@ function setRandomPosition(gameItem) {
 
 function gameStart(count) {
   const result = document.querySelector('.result-actions');
+  const Btn = document.querySelector('.play__btn');
   result.style.display = 'none';
   let isGameFinished = false;
   const gameTimer = timerStart();
+  currentTimer = gameTimer.timer;
   const clickHandler = (e) => {
     if (isGameFinished || gameTimer.isTimerFinished()) return;
     const target = e.target;
@@ -74,6 +102,7 @@ function gameStart(count) {
     if (bugElement) {
       gameResult('YOU LOSE', gameTimer.timer);
       isGameFinished = true;
+      Btn.style.opacity = 0;
     } else if (carrotElement) {
       count--;
       carrotElement.style.display = 'none';
@@ -81,10 +110,11 @@ function gameStart(count) {
       if (count === 0) {
         gameResult('YOU WON', gameTimer.timer);
         isGameFinished = true;
+        Btn.style.opacity = 0;
       }
     }
   };
-
+  gameHandler = clickHandler;
   itemsContainer.addEventListener('click', clickHandler);
 }
 
