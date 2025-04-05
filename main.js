@@ -6,7 +6,7 @@ const timers = document.querySelector('.timer');
 
 let currentTimer = null;
 let gameHandler = null;
-
+let GAME_DURATION_SEC = 10;
 const btnState = {
   isPlaying: false,
   setIsPlaying(value) {
@@ -87,8 +87,8 @@ function gameUpdate() {
   setRandomPosition(bugItem);
 }
 
-function getRandom(max, min) {
-  return Math.floor(Math.random() * (max - min));
+function getRandom(min, max) {
+  return Math.floor(Math.random() * (max - min) + min);
 }
 
 function createGameItems() {
@@ -110,14 +110,18 @@ function createGameItems() {
 }
 
 function setRandomPosition(gameItem) {
+  const x = 0;
+  const y = 0;
   const item = document.querySelector('.game__item');
-  const containerWidth = itemsContainer.getBoundingClientRect().width;
-  const containerheight = itemsContainer.getBoundingClientRect().height;
   const itemWidth = item.getBoundingClientRect().width;
   const itemHeight = item.getBoundingClientRect().height;
+  const containerWidth =
+    itemsContainer.getBoundingClientRect().width - itemWidth;
+  const containerheight =
+    itemsContainer.getBoundingClientRect().height - itemHeight;
   gameItem.forEach((item) => {
-    item.style.left = getRandom(containerWidth, itemWidth) + 'px';
-    item.style.top = getRandom(containerheight, itemHeight) + 'px';
+    item.style.left = getRandom(x, containerWidth) + 'px';
+    item.style.top = getRandom(y, containerheight) + 'px';
   });
 }
 
@@ -159,23 +163,26 @@ function gameStart(count) {
 }
 
 function timerStart() {
-  let sec = 10;
+  let sec = GAME_DURATION_SEC;
   let isTimerFinished = false;
-  timers.textContent = `0:${sec}`;
+  updateTime(sec);
   const timer = setInterval(() => {
-    sec--;
     if (sec < 0) {
       gameResult('YOU LOSE', timer);
       isTimerFinished = true;
       stopSound('bgAudio');
       playSound('gameResetSound');
     } else {
-      timers.textContent = `0:${sec}`;
+      updateTime(--sec);
     }
   }, 1000);
   return { timer, isTimerFinished: () => isTimerFinished };
 }
-
+function updateTime(time) {
+  const minutes = Math.floor(time / 60);
+  const seconds = Math.floor(time % 60);
+  timers.innerText = `${minutes}:${seconds}`;
+}
 function gameResult(text, timer) {
   const result = document.querySelector('.result-actions');
   const message = document.querySelector('.result__message');
