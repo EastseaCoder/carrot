@@ -88,7 +88,7 @@ function stopGame(message) {
   playSound('gameResetSound');
   hideStopBtn();
   removeClickHandler();
-  gameResult(message, gameState.timer, dom.result, dom.message);
+  gameResult(message, gameState, dom);
 }
 function resetGame() {
   playSound('bgAudio', { loop: true });
@@ -105,14 +105,19 @@ function updatePlayBtnToStop() {
   dom.playBtn.innerHTML = `<i class="fa-solid fa-stop"></i>`;
 }
 function hideStopBtn() {
+  hideBtnstyle(dom);
+}
+function showStopBtn() {
+  showBtnStyle(dom);
+}
+function hideBtnstyle(dom) {
   dom.playBtn.style.opacity = 0;
   dom.playBtn.style.pointerEvents = 'none';
 }
-function showStopBtn() {
+function showBtnStyle(dom) {
   dom.playBtn.style.opacity = 1;
   dom.playBtn.style.pointerEvents = 'auto';
 }
-
 function gamePlay() {
   // setting carrot&bug
   addGameItemToHtml();
@@ -121,8 +126,8 @@ function gamePlay() {
   // gameStart
   gameStart();
   // carrot&bug randomSetting
-  const carrotItem = document.querySelectorAll('.game__item--carrot');
-  const bugItem = document.querySelectorAll('.game__item--bug');
+  const carrotItem = dom.itemsContainer.querySelectorAll('.game__item--carrot');
+  const bugItem = dom.itemsContainer.querySelectorAll('.game__item--bug');
   setRandomPosition([...carrotItem, ...bugItem], dom.itemsContainer);
 }
 function addGameItemToHtml() {
@@ -131,6 +136,7 @@ function addGameItemToHtml() {
   const bugCount = 10;
   const itemHtml = createGameItems(carrotCount, bugCount);
   dom.itemsContainer.innerHTML = itemHtml;
+  console.log();
 }
 function initCount() {
   dom.counter.innerText = gameState.carrotCount;
@@ -140,14 +146,32 @@ function getRandom(min, max) {
 }
 
 function createGameItems(carrotCount, bugCount) {
-  let content = '';
-  for (let i = 0; i < carrotCount; i++) {
-    content += createItemsHtml('carrot', 'img/carrot.png');
-  }
-  for (let i = 0; i < bugCount; i++) {
-    content += createItemsHtml('bug', 'img/bug.png');
-  }
-  return content;
+  // soultion1
+  // const carrots = Array.from({ length: carrotCount }, () =>
+  //   createItemsHtml('carrot', 'img/carrot.png')
+  // );
+  // const bugs = Array.from({ length: bugCount }, () =>
+  //   createItemsHtml('bug', 'img/bug.png')
+  // );
+  // return [...carrots, ...bugs].join('');
+  // soultion2
+  // return [
+  //   ...Array(carrotCount)
+  //     .fill()
+  //     .map(() => createItemsHtml('carrot', 'img/carrot.png')),
+  //   ...Array(bugCount)
+  //     .fill()
+  //     .map(() => createItemsHtml('bug', 'img/bug.png')),
+  // ].join('');
+  // soultion3
+  return [
+    { count: carrotCount, type: 'carrot', src: 'img/carrot.png' },
+    { count: bugCount, type: 'bug', src: 'img/bug.png' },
+  ]
+    .flatMap(({ count, type, src }) =>
+      Array.from({ length: count }, () => createItemsHtml(type, src))
+    )
+    .join('');
 }
 function createItemsHtml(type, src) {
   return `<div class="game__item game__item--${type}">
@@ -179,13 +203,12 @@ function startSetting() {
   startTimer();
 }
 function resetGameState() {
-  hideGameResult(dom.result);
+  hideGameResult();
   removeClickHandler();
   gameState.setGameFinished(false);
 }
 function startTimer() {
-  const gameTimer = timerStart();
-  gameState.timer = gameTimer.timer;
+  gameState.timer = timerStart();
 }
 function handleItemClick(e) {
   if (gameState.isGameFinished) return;
@@ -193,50 +216,59 @@ function handleItemClick(e) {
   const carrotElement = target.closest('.game__item--carrot');
   const bugElement = target.closest('.game__item--bug');
   if (bugElement) {
-    gameResult('YOU LOSE', gameState.timer, dom.result, dom.message);
+    gameResult('YOU LOSE', gameState, dom);
     stopSound('bgAudio');
     playSound('bugClickSound');
     gameState.setGameFinished(true);
-    dom.playBtn.style.opacity = 0;
+    hideStopBtn();
   } else if (carrotElement) {
-    carrotElement.style.display = 'none';
-    gameState.carrotCount--;
-    dom.counter.innerText = gameState.carrotCount;
+    removeCarrot(carrotElement, gameState, dom);
     playSound('carrotClickSound');
     if (gameState.carrotCount === 0) {
-      gameResult('YOU WON', gameState.timer, dom.result, dom.message);
+      gameResult('YOU WON', gameState, dom);
       gameState.setGameFinished(true);
-      dom.playBtn.style.opacity = 0;
+      hideStopBtn();
       stopSound('bgAudio');
       playSound('gameWinSound');
     }
   }
 }
+function removeCarrot(carrotElement, state, dom) {
+  carrotElement.style.display = 'none';
+  state.carrotCount--;
+  dom.counter.innerText = state.carrotCount;
+}
 function timerStart() {
   let sec = config.GAME_DURATION_SEC;
-  updateTime(sec);
+  updateTime(sec, dom);
   const timer = setInterval(() => {
     if (sec <= 0) {
       stopGame('YOU LOSE!');
     } else {
-      updateTime(--sec);
+      updateTime(--sec, dom);
     }
   }, 1000);
-  return { timer };
+  return timer;
 }
-function updateTime(time) {
-  const minutes = Math.floor(time / 60);
-  const seconds = Math.floor(time % 60);
+function updateTime(time, dom) {
+  const minutes = String(Math.floor(time / 60)).padStart(2, '0');
+  const seconds = String(Math.floor(time % 60)).padStart(2, '0');
   dom.timers.innerText = `${minutes}:${seconds}`;
 }
-function gameResult(text, timer, result, message) {
-  result.style.display = 'block';
-  message.innerHTML = text;
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
+function gameResult(text, state, dom) {
+  showGameResultMessage(dom, text);
+  stopTimer(state);
+}
+function showGameResultMessage(dom, text) {
+  dom.result.style.display = 'block';
+  dom.message.innerHTML = text;
+}
+function stopTimer(state) {
+  if (state.timer) {
+    clearInterval(state.timer);
+    state.timer = null;
   }
 }
-function hideGameResult(result) {
-  result.style.display = 'none';
+function hideGameResult() {
+  dom.result.style.display = 'none';
 }
