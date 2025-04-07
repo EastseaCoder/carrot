@@ -11,13 +11,19 @@ const dom = {
 
 const config = {
   GAME_DURATION_SEC: 10,
+  CARROT_COUNT: 10,
+  setIsCarrotCount(value) {
+    this.CARROT_COUNT = value;
+  },
+  BUG_COUNT: 10,
+  ITEM_WIDTH: 50,
+  ITEM_HEIGHT: 50,
 };
 const gameState = {
   timer: null,
   clickHandler: null,
   isPlaying: false,
   isGameFinished: false,
-  carrotCount: 0,
   setIsPlaying(value) {
     this.isPlaying = value;
   },
@@ -34,31 +40,36 @@ const gameAudio = {
   gameWinSound: new Audio('/sound/game_win.mp3'),
 };
 
-function playSound(name, { loop = false } = {}) {
-  const sound = gameAudio[name];
-  if (!sound) return;
-  sound.pause();
-  sound.currentTime = 0;
-  sound.loop = loop;
-  sound.volume = 0.5;
-  sound.play();
-}
-
-function stopSound(name) {
-  const sound = gameAudio[name];
-  if (!sound) return;
-  sound.pause();
-  sound.currentTime = 0;
-}
+const sound = {
+  play(name, { loop = false } = {}) {
+    const sound = gameAudio[name];
+    if (!sound) return;
+    try {
+      sound.pause();
+      sound.currentTime = 0;
+      sound.loop = loop;
+      sound.volume = 0.5;
+      sound.play();
+    } catch (e) {
+      alert(`Sound Error:${name}`);
+    }
+  },
+  stop(name) {
+    const sound = gameAudio[name];
+    if (!sound) return;
+    sound.pause();
+    sound.currentTime = 0;
+  },
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   dom.mainContainer.addEventListener('click', handleMainContainerClick);
 });
 
 function handleMainContainerClick(e) {
-  const PlayBtn = e.target.closest('.play__btn');
+  const playBtn = e.target.closest('.play__btn');
   const resetBtn = e.target.closest('.reset__btn');
-  if (PlayBtn) {
+  if (playBtn) {
     handlePlayBtnClick();
   } else if (resetBtn) {
     handleResetBtnClick();
@@ -77,22 +88,22 @@ function handleResetBtnClick() {
 }
 
 function startGame() {
-  playSound('bgAudio', { loop: true });
+  sound.play('bgAudio', { loop: true });
   updatePlayBtnToStop();
   gamePlay();
   gameState.setIsPlaying(true);
 }
 
 function stopGame(message) {
-  stopSound('bgAudio');
-  playSound('gameResetSound');
-  hideStopBtn();
+  sound.stop('bgAudio');
+  sound.play('gameResetSound');
+  togglePlayBtn(false);
   removeClickHandler();
   gameResult(message, gameState, dom);
 }
 function resetGame() {
-  playSound('bgAudio', { loop: true });
-  showStopBtn();
+  sound.play('bgAudio', { loop: true });
+  togglePlayBtn(true);
   gamePlay();
 }
 function removeClickHandler() {
@@ -104,42 +115,34 @@ function removeClickHandler() {
 function updatePlayBtnToStop() {
   dom.playBtn.innerHTML = `<i class="fa-solid fa-stop"></i>`;
 }
-function hideStopBtn() {
-  hideBtnstyle(dom);
+
+function togglePlayBtn(show) {
+  dom.playBtn.style.opacity = show ? 1 : 0;
+  dom.playBtn.style.pointerEvents = show ? 'auto' : 'none';
 }
-function showStopBtn() {
-  showBtnStyle(dom);
-}
-function hideBtnstyle(dom) {
-  dom.playBtn.style.opacity = 0;
-  dom.playBtn.style.pointerEvents = 'none';
-}
-function showBtnStyle(dom) {
-  dom.playBtn.style.opacity = 1;
-  dom.playBtn.style.pointerEvents = 'auto';
-}
+
 function gamePlay() {
+  renderGameItems();
+  initializeCount();
+  gameStart();
+}
+
+function renderGameItems() {
   // setting carrot&bug
   addGameItemToHtml();
-  // init Count
-  initCount();
-  // gameStart
-  gameStart();
   // carrot&bug randomSetting
-  const carrotItem = dom.itemsContainer.querySelectorAll('.game__item--carrot');
-  const bugItem = dom.itemsContainer.querySelectorAll('.game__item--bug');
-  setRandomPosition([...carrotItem, ...bugItem], dom.itemsContainer);
+  const gameItems = dom.itemsContainer.querySelectorAll('.game__item');
+  setRandomPosition([...gameItems], dom.itemsContainer, config);
 }
 function addGameItemToHtml() {
-  const carrotCount = 10;
-  gameState.carrotCount = carrotCount;
-  const bugCount = 10;
+  config.setIsCarrotCount(10);
+  const carrotCount = config.CARROT_COUNT;
+  const bugCount = config.BUG_COUNT;
   const itemHtml = createGameItems(carrotCount, bugCount);
   dom.itemsContainer.innerHTML = itemHtml;
-  console.log();
 }
-function initCount() {
-  dom.counter.innerText = gameState.carrotCount;
+function initializeCount() {
+  dom.counter.innerText = config.CARROT_COUNT;
 }
 function getRandom(min, max) {
   return Math.floor(Math.random() * (max - min) + min);
@@ -173,20 +176,18 @@ function createGameItems(carrotCount, bugCount) {
     )
     .join('');
 }
+
 function createItemsHtml(type, src) {
   return `<div class="game__item game__item--${type}">
         <img src="${src}" alt="${type}" />
       </div>`;
 }
 
-function setRandomPosition(
-  gameItems,
-  container,
-  itemWidth = 50,
-  itemHeight = 50
-) {
-  const containerWidth = container.getBoundingClientRect().width - itemWidth;
-  const containerheight = container.getBoundingClientRect().height - itemHeight;
+function setRandomPosition(gameItems, container, config) {
+  const containerWidth =
+    container.getBoundingClientRect().width - config.ITEM_WIDTH;
+  const containerheight =
+    container.getBoundingClientRect().height - config.ITEM_HEIGHT;
   gameItems.forEach((item) => {
     item.style.left = getRandom(0, containerWidth) + 'px';
     item.style.top = getRandom(0, containerheight) + 'px';
@@ -217,26 +218,26 @@ function handleItemClick(e) {
   const bugElement = target.closest('.game__item--bug');
   if (bugElement) {
     gameResult('YOU LOSE', gameState, dom);
-    stopSound('bgAudio');
-    playSound('bugClickSound');
+    sound.stop('bgAudio');
+    sound.play('bugClickSound');
     gameState.setGameFinished(true);
-    hideStopBtn();
+    togglePlayBtn(false);
   } else if (carrotElement) {
-    removeCarrot(carrotElement, gameState, dom);
-    playSound('carrotClickSound');
-    if (gameState.carrotCount === 0) {
+    removeCarrot(carrotElement, config, dom);
+    sound.play('carrotClickSound');
+    if (config.CARROT_COUNT === 0) {
       gameResult('YOU WON', gameState, dom);
       gameState.setGameFinished(true);
-      hideStopBtn();
-      stopSound('bgAudio');
-      playSound('gameWinSound');
+      togglePlayBtn(false);
+      sound.stop('bgAudio');
+      sound.play('gameWinSound');
     }
   }
 }
-function removeCarrot(carrotElement, state, dom) {
+function removeCarrot(carrotElement, config, dom) {
   carrotElement.style.display = 'none';
-  state.carrotCount--;
-  dom.counter.innerText = state.carrotCount;
+  config.CARROT_COUNT--;
+  dom.counter.innerText = config.CARROT_COUNT;
 }
 function timerStart() {
   let sec = config.GAME_DURATION_SEC;
